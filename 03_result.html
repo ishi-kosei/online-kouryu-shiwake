@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マッチング結果 | オンライン経営者交流会</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <style>
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+    th { background: #f3f4f6; font-weight: 600; }
+    .badge {
+      display: inline-block; padding: 0.1rem 0.5rem;
+      border-radius: 9999px; font-size: 0.7rem; font-weight: 600;
+    }
+    .score-high { background: #d1fae5; color: #065f46; }
+    .score-mid  { background: #fef3c7; color: #92400e; }
+    .score-low  { background: #fee2e2; color: #991b1b; }
+    .highlight-row { background: #eff6ff !important; }
+    .highlight-row td { font-weight: 600; }
+
+    /* 印刷スタイル */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white; }
+      .page-break { page-break-before: always; }
+      nav { display: none; }
+      .print-title { display: block !important; }
+      .round-card { box-shadow: none; border: 1px solid #ccc; }
+    }
+    .print-title { display: none; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ナビバー -->
+<nav class="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow no-print">
+  <div>
+    <span class="font-bold text-lg">マッチング結果</span>
+    <span id="generatedAt" class="ml-3 text-blue-200 text-sm"></span>
+  </div>
+  <div class="flex gap-3 text-sm items-center">
+    <a href="02_admin.html" class="hover:underline text-blue-200">← 管理画面に戻る</a>
+    <button onclick="window.print()" class="bg-white text-blue-700 px-3 py-1 rounded font-semibold hover:bg-blue-50">
+      印刷
+    </button>
+  </div>
+</nav>
+
+<!-- データなし -->
+<div id="noData" class="hidden max-w-xl mx-auto mt-20 text-center">
+  <div class="text-6xl mb-4">📋</div>
+  <h2 class="text-xl font-bold text-gray-700 mb-2">データがありません</h2>
+  <p class="text-gray-500 mb-4">管理画面でマッチングを実行してからこのページを開いてください。</p>
+  <a href="02_admin.html" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700">
+    管理画面へ
+  </a>
+</div>
+
+<!-- メインコンテンツ -->
+<div id="mainContent" class="hidden max-w-6xl mx-auto px-4 py-6">
+
+  <!-- 印刷用タイトル -->
+  <div class="print-title text-center mb-6">
+    <h1 class="text-2xl font-bold">オンライン経営者交流会 面談スケジュール</h1>
+    <p id="printDate" class="text-gray-500 text-sm mt-1"></p>
+  </div>
+
+  <!-- 個人スケジュール検索 -->
+  <div class="bg-white rounded-xl p-6 shadow mb-6 no-print">
+    <h2 class="text-xl font-bold text-gray-800 mb-3">個人スケジュールを確認する</h2>
+    <div class="flex gap-3">
+      <input type="text" id="searchInput" placeholder="お名前で検索..."
+        class="border rounded-lg px-4 py-2 flex-1 text-sm focus:outline-none focus:border-blue-400">
+      <button onclick="searchPerson()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 text-sm">
+        検索
+      </button>
+      <button onclick="clearSearch()" class="border text-gray-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 text-sm">
+        クリア
+      </button>
+    </div>
+    <div id="personalResult" class="mt-4 hidden"></div>
+  </div>
+
+  <!-- ラウンド別一覧 -->
+  <div id="roundsContainer"></div>
+
+  <!-- 参加者別サマリー -->
+  <div class="bg-white rounded-xl p-6 shadow mt-6 page-break">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">参加者別 面談スケジュール一覧</h2>
+    <div class="overflow-x-auto">
+      <table id="summaryTable">
+        <thead>
+          <tr>
+            <th>お名前</th>
+            <th>会社名</th>
+            <th class="text-center">Round 1</th>
+            <th class="text-center">Round 2</th>
+            <th class="text-center">Round 3</th>
+            <th class="text-center">Round 4</th>
+            <th class="text-center">Round 5</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ===== データ読み込み =====
+  let resultData = null;
+
+  window.addEventListener('load', () => {
+    try {
+      const raw = localStorage.getItem('matching_result');
+      if (!raw) throw new Error('no data');
+      resultData = JSON.parse(raw);
+      init();
+    } catch(e) {
+      document.getElementById('noData').classList.remove('hidden');
+    }
+  });
+
+  function init() {
+    document.getElementById('mainContent').classList.remove('hidden');
+    const dateEl = document.getElementById('generatedAt');
+    const printDateEl = document.getElementById('printDate');
+    if (resultData.generatedAt) {
+      dateEl.textContent = `生成日時: ${resultData.generatedAt}`;
+      printDateEl.textContent = `生成日時: ${resultData.generatedAt}`;
+    }
+
+    renderRounds();
+    renderSummary();
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function scoreClass(score) {
+    return score >= 60 ? 'score-high' : score >= 30 ? 'score-mid' : 'score-low';
+  }
+
+  // ===== ラウンド別表示 =====
+  function renderRounds() {
+    const container = document.getElementById('roundsContainer');
+    container.innerHTML = resultData.rounds.map((pairs, idx) => `
+      <div class="bg-white rounded-xl p-6 shadow mb-4 round-card ${idx > 0 ? '' : ''}">
+        <h2 class="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="bg-blue-600 text-white text-sm px-3 py-1 rounded-full">Round ${idx + 1}</span>
+          <span class="text-gray-500 text-sm font-normal">${pairs.length}ペア</span>
+        </h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>参加者A</th>
+              <th>会社A</th>
+              <th class="text-center" style="width:40px">↔</th>
+              <th>参加者B</th>
+              <th>会社B</th>
+              <th class="text-center">相性スコア</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pairs.map((pair, pIdx) => {
+              const isDummy = pair.aIsDummy || pair.bIsDummy;
+              return `
+                <tr class="${isDummy ? 'text-gray-400 italic' : ''}">
+                  <td class="text-gray-400 text-center">${pIdx + 1}</td>
+                  <td class="font-medium">${esc(pair.aIsDummy ? '（休憩）' : pair.aName)}</td>
+                  <td class="text-gray-600">${esc(pair.aIsDummy ? '' : pair.aCompany)}</td>
+                  <td class="text-center text-gray-400">↔</td>
+                  <td class="font-medium">${esc(pair.bIsDummy ? '（休憩）' : pair.bName)}</td>
+                  <td class="text-gray-600">${esc(pair.bIsDummy ? '' : pair.bCompany)}</td>
+                  <td class="text-center">
+                    ${isDummy
+                      ? '<span class="text-gray-400 text-xs">休憩</span>'
+                      : `<span class="badge ${scoreClass(pair.score)}">${pair.score}点</span>${pair.isRepeat ? ' <span class="badge score-low">再マッチ</span>' : ''}`
+                    }
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `).join('');
+  }
+
+  // ===== 参加者別サマリー =====
+  function renderSummary() {
+    const participants = resultData.participants.filter(p => !p.isDummy);
+    const rounds = resultData.rounds;
+
+    // 個人スケジュールを構築
+    const sched = {};
+    participants.forEach(p => { sched[p.id] = new Array(5).fill(null); });
+
+    rounds.forEach((pairs, rIdx) => {
+      pairs.forEach(pair => {
+        const isDummy = pair.aIsDummy || pair.bIsDummy;
+        if (isDummy) {
+          const active = pair.aIsDummy ? pair : null;
+          if (!pair.aIsDummy && sched[pair.aId]) sched[pair.aId][rIdx] = { isBye: true };
+          if (!pair.bIsDummy && sched[pair.bId]) sched[pair.bId][rIdx] = { isBye: true };
+          return;
+        }
+        if (sched[pair.aId]) sched[pair.aId][rIdx] = { name: pair.bName, company: pair.bCompany, score: pair.score, isRepeat: pair.isRepeat };
+        if (sched[pair.bId]) sched[pair.bId][rIdx] = { name: pair.aName, company: pair.aCompany, score: pair.score, isRepeat: pair.isRepeat };
+      });
+    });
+
+    window._sched = sched; // 検索用に保持
+
+    const tbody = document.getElementById('summaryTbody');
+    tbody.innerHTML = participants.map(p => {
+      const entries = sched[p.id] || new Array(5).fill(null);
+      return `
+        <tr data-name="${esc(p.name)}" data-id="${esc(p.id)}">
+          <td class="font-medium">${esc(p.name)}</td>
+          <td class="text-gray-600">${esc(p.company)}</td>
+          ${entries.map(entry => {
+            if (!entry) return '<td class="text-gray-300 text-center text-xs">-</td>';
+            if (entry.isBye) return '<td class="text-center"><span class="badge bg-gray-100 text-gray-500">休憩</span></td>';
+            return `<td class="text-center">
+              <div class="text-sm font-medium">${esc(entry.name)}</div>
+              <div class="text-xs text-gray-500">${esc(entry.company)}</div>
+              <span class="badge ${scoreClass(entry.score)}">${entry.score}点</span>
+              ${entry.isRepeat ? '<span class="badge score-low ml-1">再</span>' : ''}
+            </td>`;
+          }).join('')}
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ===== 個人検索 =====
+  function searchPerson() {
+    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!query) return;
+
+    const resultDiv = document.getElementById('personalResult');
+
+    // サマリー表のハイライト解除
+    document.querySelectorAll('#summaryTbody tr').forEach(tr => tr.classList.remove('highlight-row'));
+
+    // マッチする参加者を探す
+    const matched = resultData.participants.filter(p =>
+      !p.isDummy && (p.name.toLowerCase().includes(query) || p.company.toLowerCase().includes(query))
+    );
+
+    if (matched.length === 0) {
+      resultDiv.innerHTML = '<p class="text-gray-500 text-sm">該当する参加者が見つかりませんでした。</p>';
+      resultDiv.classList.remove('hidden');
+      return;
+    }
+
+    // 検索結果表示
+    resultDiv.innerHTML = matched.map(p => {
+      const entries = window._sched[p.id] || new Array(5).fill(null);
+      return `
+        <div class="border rounded-lg p-4 mb-3 bg-blue-50">
+          <h3 class="font-bold text-gray-800 mb-2">${esc(p.name)} さん（${esc(p.company)}）のスケジュール</h3>
+          <div class="grid grid-cols-5 gap-2">
+            ${entries.map((entry, i) => `
+              <div class="bg-white rounded p-2 text-center border">
+                <div class="text-xs font-bold text-blue-600 mb-1">Round ${i + 1}</div>
+                ${!entry
+                  ? '<div class="text-gray-300 text-xs">-</div>'
+                  : entry.isBye
+                    ? '<div class="text-gray-400 text-xs">休憩</div>'
+                    : `<div class="text-sm font-medium">${esc(entry.name)}</div>
+                       <div class="text-xs text-gray-500">${esc(entry.company)}</div>
+                       <div class="mt-1"><span class="badge ${scoreClass(entry.score)}">${entry.score}点</span></div>`
+                }
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    resultDiv.classList.remove('hidden');
+
+    // サマリー表のハイライト
+    matched.forEach(p => {
+      const row = document.querySelector(`#summaryTbody tr[data-id="${CSS.escape(p.id)}"]`);
+      if (row) {
+        row.classList.add('highlight-row');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('personalResult').classList.add('hidden');
+    document.getElementById('personalResult').innerHTML = '';
+    document.querySelectorAll('#summaryTbody tr').forEach(tr => tr.classList.remove('highlight-row'));
+  }
+
+  // Enterキーで検索
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('searchInput')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') searchPerson();
+    });
+  });
+</script>
+</body>
+</html>

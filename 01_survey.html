@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>事前アンケート | オンライン経営者交流会</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <style>
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
+    .required::after { content: " *"; color: #e53e3e; }
+    .section-card {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; }
+    .checkbox-item { display: flex; align-items: center; gap: 0.5rem; }
+    .checkbox-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; cursor: pointer; flex-shrink: 0; }
+    .form-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .error-msg { color: #e53e3e; font-size: 0.85rem; margin-top: 0.25rem; display: none; }
+    .error-msg.show { display: block; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-8 px-4">
+
+<div class="max-w-2xl mx-auto">
+
+  <!-- ヘッダー -->
+  <div class="text-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">オンライン経営者交流会</h1>
+    <p class="text-lg text-blue-600 font-semibold">事前アンケート</p>
+    <p class="text-gray-500 mt-2 text-sm">
+      このアンケートをもとに、相性の良い経営者様との一対一面談をコーディネートします。<br>
+      <span class="text-red-500">*</span> は必須項目です。
+    </p>
+  </div>
+
+  <form id="surveyForm" novalidate>
+
+    <!-- セクション1: 基本情報 -->
+    <div class="section-card">
+      <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">基本情報</h2>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">お名前</label>
+        <input type="text" id="name" class="form-input" placeholder="山田 太郎">
+        <p class="error-msg" id="err-name">お名前を入力してください</p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">会社名・屋号</label>
+        <input type="text" id="company" class="form-input" placeholder="株式会社〇〇 / 〇〇事務所">
+        <p class="error-msg" id="err-company">会社名を入力してください</p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">業種</label>
+        <select id="industry" class="form-input">
+          <option value="">-- 選択してください --</option>
+        </select>
+        <p class="error-msg" id="err-industry">業種を選択してください</p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">役職</label>
+        <input type="text" id="position" class="form-input" placeholder="代表取締役、取締役、フリーランスなど">
+        <p class="error-msg" id="err-position">役職を入力してください</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">従業員数</label>
+        <select id="companySize" class="form-input">
+          <option value="">-- 選択 --</option>
+          <option>1人（個人事業）</option>
+          <option>2〜10人</option>
+          <option>11〜50人</option>
+          <option>51人以上</option>
+        </select>
+        <p class="error-msg" id="err-companySize">従業員数を選択してください</p>
+      </div>
+    </div>
+
+    <!-- セクション2: 参加目的 -->
+    <div class="section-card">
+      <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">参加目的</h2>
+      <p class="text-sm text-gray-500 mb-3">当てはまるものをすべて選択してください（複数可）</p>
+      <div class="checkbox-grid" id="purposeGroup">
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="販路開拓"> 販路開拓</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="仕入先・外注先の発掘"> 仕入先・外注先の発掘</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="ビジネス提携先の発掘"> ビジネス提携先の発掘</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="情報収集・学び"> 情報収集・学び</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="資金調達・投資家探し"> 資金調達・投資家探し</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="採用・人材確保"> 採用・人材確保</label>
+        <label class="checkbox-item"><input type="checkbox" name="purpose" value="その他"> その他</label>
+      </div>
+      <p class="error-msg" id="err-purpose">少なくとも1つ選択してください</p>
+    </div>
+
+    <!-- セクション3: 自社情報 -->
+    <div class="section-card">
+      <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">自社について</h2>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">
+          自社の強み・提供できること
+        </label>
+        <textarea id="strengths" class="form-input" rows="3"
+          placeholder="例：10年以上の製造業の経験をもとに、高品質なOEM製品を小ロットから対応できます。"></textarea>
+        <p class="error-msg" id="err-strengths">強みを入力してください</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">
+          現在の課題・求めているもの
+        </label>
+        <textarea id="challenges" class="form-input" rows="3"
+          placeholder="例：新しい販路（特に関東エリア）を開拓したい。ECサイトの立ち上げに詳しい方に相談したい。"></textarea>
+        <p class="error-msg" id="err-challenges">課題・求めていることを入力してください</p>
+      </div>
+    </div>
+
+    <!-- セクション4: 面談希望 -->
+    <div class="section-card">
+      <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">面談希望設定</h2>
+
+      <div class="mb-5">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">特に話したい業種（任意・複数可）</label>
+        <div class="checkbox-grid" id="preferGroup"></div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">避けたい業種（競合等・任意・複数可）</label>
+        <div class="checkbox-grid" id="avoidGroup"></div>
+      </div>
+    </div>
+
+    <!-- セクション5: プロフィール -->
+    <div class="section-card">
+      <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">プロフィール</h2>
+      <p class="text-sm text-gray-500 mb-4">雑談のきっかけや共通の話題に活用します。</p>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-2 required">趣味（複数可）</label>
+        <div class="checkbox-grid" id="hobbyGroup">
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="ゴルフ"> ゴルフ</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="ポーカー"> ポーカー</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="麻雀"> 麻雀</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="グルメ"> グルメ</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="お酒"> お酒</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="旅行"> 旅行</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="サウナ"> サウナ</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="釣り"> 釣り</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="アウトドア"> アウトドア</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="散歩"> 散歩</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="シーシャ"> シーシャ</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="音楽"> 音楽</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="お笑い"> お笑い</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="格闘技"> 格闘技</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="バスケ"> バスケ</label>
+          <label class="checkbox-item"><input type="checkbox" name="hobby" value="その他"> その他</label>
+        </div>
+        <p class="error-msg" id="err-hobby">趣味を1つ以上選択してください</p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1 required">出身地</label>
+        <select id="birthplace" class="form-input">
+          <option value="">-- 選択してください --</option>
+          <optgroup label="北海道・東北">
+            <option>北海道</option><option>青森県</option><option>岩手県</option>
+            <option>宮城県</option><option>秋田県</option><option>山形県</option><option>福島県</option>
+          </optgroup>
+          <optgroup label="関東">
+            <option>茨城県</option><option>栃木県</option><option>群馬県</option>
+            <option>埼玉県</option><option>千葉県</option><option>東京都</option><option>神奈川県</option>
+          </optgroup>
+          <optgroup label="中部">
+            <option>新潟県</option><option>富山県</option><option>石川県</option><option>福井県</option>
+            <option>山梨県</option><option>長野県</option><option>岐阜県</option>
+            <option>静岡県</option><option>愛知県</option>
+          </optgroup>
+          <optgroup label="近畿">
+            <option>三重県</option><option>滋賀県</option><option>京都府</option>
+            <option>大阪府</option><option>兵庫県</option><option>奈良県</option><option>和歌山県</option>
+          </optgroup>
+          <optgroup label="中国・四国">
+            <option>鳥取県</option><option>島根県</option><option>岡山県</option>
+            <option>広島県</option><option>山口県</option>
+            <option>徳島県</option><option>香川県</option><option>愛媛県</option><option>高知県</option>
+          </optgroup>
+          <optgroup label="九州・沖縄">
+            <option>福岡県</option><option>佐賀県</option><option>長崎県</option><option>熊本県</option>
+            <option>大分県</option><option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option>
+          </optgroup>
+          <option>海外</option>
+        </select>
+        <p class="error-msg" id="err-birthplace">出身地を選択してください</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">
+          年齢
+          <span class="text-gray-400 font-normal text-xs ml-1">（任意）</span>
+        </label>
+        <select id="ageRange" class="form-input">
+          <option value="">-- 回答しない --</option>
+          <option>20代</option>
+          <option>30代</option>
+          <option>40代</option>
+          <option>50代</option>
+          <option>60代以上</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 送信ボタン -->
+    <div class="text-center no-print">
+      <button type="submit" id="submitBtn"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-lg text-lg transition-colors">
+        回答を保存してCSVをダウンロード
+      </button>
+      <p class="text-gray-400 text-xs mt-3">※ダウンロードしたCSVファイルを主催者にご提出ください</p>
+    </div>
+
+  </form>
+
+  <!-- 完了メッセージ -->
+  <div id="successMsg" class="hidden section-card text-center mt-6">
+    <div class="text-green-500 text-5xl mb-3">&#10003;</div>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">回答を受け付けました！</h3>
+    <p class="text-gray-600 mb-4">CSVファイルがダウンロードされました。<br>主催者にそのファイルをお送りください。</p>
+    <button onclick="location.reload()" class="text-blue-600 underline text-sm">もう一度入力する</button>
+  </div>
+
+</div>
+
+<script>
+  const INDUSTRIES = [
+    'IT/情報通信関係', 'コンサル関係', 'デザイン関係',
+    '不動産/住宅/建設関係', '人材（派遣/紹介）関係',
+    '医療/介護/福祉/健康/スポーツ関係', '士業（税理士/会計士/弁護士など）',
+    '広告関係', '店舗（飲食/美容/物販）関係', '教育関係',
+    '旅行/観光関係', '流通/卸売/小売関係', '物流/運輸/郵便業',
+    '生活品関係/食品（食材）', '美容/ファッション関係', '製造業関係',
+    '農業/林業/漁業/鉱業関係', '金融/保険業', '電気/ガス/熱供給/水道業', 'その他',
+  ];
+
+  // 業種セレクトを動的生成
+  const industrySelect = document.getElementById('industry');
+  INDUSTRIES.forEach(ind => {
+    const opt = document.createElement('option');
+    opt.value = ind;
+    opt.textContent = ind;
+    industrySelect.appendChild(opt);
+  });
+
+  // 面談希望業種チェックボックスを動的生成
+  ['preferGroup', 'avoidGroup'].forEach(groupId => {
+    const name = groupId === 'preferGroup' ? 'prefer' : 'avoid';
+    const group = document.getElementById(groupId);
+    INDUSTRIES.forEach(ind => {
+      const label = document.createElement('label');
+      label.className = 'checkbox-item';
+      label.innerHTML = `<input type="checkbox" name="${name}" value="${ind}"> ${ind}`;
+      group.appendChild(label);
+    });
+  });
+
+  // LocalStorageのキー
+  const LS_KEY = 'survey_draft';
+
+  // 前回の入力を復元
+  window.addEventListener('load', () => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        ['name','company','industry','position','companySize','strengths','challenges','birthplace','ageRange'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && data[id]) el.value = data[id];
+        });
+        (data.purposes || []).forEach(v => {
+          document.querySelectorAll(`input[name="purpose"][value="${CSS.escape(v)}"]`).forEach(cb => cb.checked = true);
+        });
+        (data.hobbies || []).forEach(v => {
+          document.querySelectorAll(`input[name="hobby"][value="${CSS.escape(v)}"]`).forEach(cb => cb.checked = true);
+        });
+        (data.preferIndustries || []).forEach(v => {
+          document.querySelectorAll(`input[name="prefer"][value="${CSS.escape(v)}"]`).forEach(cb => cb.checked = true);
+        });
+        (data.avoidIndustries || []).forEach(v => {
+          document.querySelectorAll(`input[name="avoid"][value="${CSS.escape(v)}"]`).forEach(cb => cb.checked = true);
+        });
+      }
+    } catch(e) {}
+  });
+
+  // フォーム送信
+  document.getElementById('surveyForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    // バリデーション
+    let valid = true;
+    const required = ['name', 'company', 'industry', 'position', 'companySize', 'strengths', 'challenges', 'birthplace'];
+    required.forEach(id => {
+      const el = document.getElementById(id);
+      const err = document.getElementById(`err-${id}`);
+      if (!el.value.trim()) {
+        err.classList.add('show');
+        valid = false;
+      } else {
+        err.classList.remove('show');
+      }
+    });
+
+    const purposes = [...document.querySelectorAll('input[name="purpose"]:checked')].map(cb => cb.value);
+    const purposeErr = document.getElementById('err-purpose');
+    if (purposes.length === 0) {
+      purposeErr.classList.add('show');
+      valid = false;
+    } else {
+      purposeErr.classList.remove('show');
+    }
+
+    const hobbies = [...document.querySelectorAll('input[name="hobby"]:checked')].map(cb => cb.value);
+    const hobbyErr = document.getElementById('err-hobby');
+    if (hobbies.length === 0) {
+      hobbyErr.classList.add('show');
+      valid = false;
+    } else {
+      hobbyErr.classList.remove('show');
+    }
+
+    if (!valid) {
+      document.querySelector('.error-msg.show')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // データ収集
+    const data = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: document.getElementById('name').value.trim(),
+      company: document.getElementById('company').value.trim(),
+      industry: document.getElementById('industry').value,
+      position: document.getElementById('position').value.trim(),
+      companySize: document.getElementById('companySize').value,
+      purposes,
+      strengths: document.getElementById('strengths').value.trim(),
+      challenges: document.getElementById('challenges').value.trim(),
+      preferIndustries: [...document.querySelectorAll('input[name="prefer"]:checked')].map(cb => cb.value),
+      avoidIndustries: [...document.querySelectorAll('input[name="avoid"]:checked')].map(cb => cb.value),
+      hobbies,
+      birthplace: document.getElementById('birthplace').value,
+      ageRange: document.getElementById('ageRange').value,
+      submittedAt: new Date().toLocaleString('ja-JP'),
+    };
+
+    // LocalStorageに保存
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+
+    // CSVに変換してダウンロード
+    downloadCSV(data);
+
+    // 完了表示
+    document.getElementById('surveyForm').classList.add('hidden');
+    document.getElementById('successMsg').classList.remove('hidden');
+  });
+
+  function downloadCSV(data) {
+    const BOM = '\uFEFF';
+    const headers = [
+      'ID','お名前','会社名','業種','役職','従業員数',
+      '参加目的','自社の強み','現在の課題',
+      '話したい業種','避けたい業種','趣味','出身地','年齢','回答日時'
+    ];
+    const row = [
+      data.id,
+      data.name,
+      data.company,
+      data.industry,
+      data.position,
+      data.companySize,
+      data.purposes.join('|'),
+      data.strengths,
+      data.challenges,
+      data.preferIndustries.join('|'),
+      data.avoidIndustries.join('|'),
+      data.hobbies.join('|'),
+      data.birthplace,
+      data.ageRange,
+      data.submittedAt,
+    ];
+
+    const escape = v => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = BOM + [headers, row].map(r => r.map(escape).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `アンケート_${data.name}_${data.company}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>

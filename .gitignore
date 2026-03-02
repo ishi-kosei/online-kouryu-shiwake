@@ -1,0 +1,10 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# テスト・個人データ（サンプル以外のCSVは除外）
+テストデータ_*.csv

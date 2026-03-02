@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面 | オンライン経営者交流会</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <style>
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
+    .tab-btn { transition: all 0.2s; }
+    .tab-btn.active { background: #2563eb; color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .drop-zone {
+      border: 2px dashed #93c5fd;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { background: #eff6ff; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.875rem; }
+    th { background: #f3f4f6; font-weight: 600; }
+    tr:hover td { background: #f9fafb; }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .score-high { background: #d1fae5; color: #065f46; }
+    .score-mid  { background: #fef3c7; color: #92400e; }
+    .score-low  { background: #fee2e2; color: #991b1b; }
+    .spinner { display: none; }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ナビバー -->
+<nav class="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow">
+  <div>
+    <span class="font-bold text-lg">経営者交流会 管理画面</span>
+    <span class="ml-3 text-blue-200 text-sm">主催者専用</span>
+  </div>
+  <div class="flex gap-3 text-sm">
+    <a href="01_survey.html" class="hover:underline text-blue-200">アンケートフォーム</a>
+    <a href="03_result.html" class="hover:underline text-blue-200">結果表示</a>
+  </div>
+</nav>
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+
+  <!-- タブ -->
+  <div class="flex gap-2 mb-6">
+    <button class="tab-btn active px-4 py-2 rounded-lg font-semibold border border-blue-600 text-blue-600" data-tab="tab-import">
+      1. CSV取込・参加者管理
+    </button>
+    <button class="tab-btn px-4 py-2 rounded-lg font-semibold border border-gray-300 text-gray-600" data-tab="tab-matching">
+      2. マッチング実行
+    </button>
+    <button class="tab-btn px-4 py-2 rounded-lg font-semibold border border-gray-300 text-gray-600" data-tab="tab-export">
+      3. 結果エクスポート
+    </button>
+  </div>
+
+  <!-- ===== タブ1: CSV取込 ===== -->
+  <div id="tab-import" class="tab-content active">
+
+    <!-- Google Forms ガイド -->
+    <div class="bg-white rounded-xl p-6 shadow mb-4">
+      <button onclick="toggleGuide()" class="w-full flex items-center justify-between text-left">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <span class="text-2xl">📝</span> Google Forms の設定ガイド
+        </h2>
+        <span id="guideChevron" class="text-gray-400 text-xl transition-transform">▼</span>
+      </button>
+      <div id="guideBody" class="hidden mt-4">
+        <div class="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 mb-4">
+          Google Forms でアンケートを作成し、回答をスプレッドシートに連携 → CSVでダウンロードすれば、そのまま取り込めます。
+        </div>
+        <p class="font-semibold text-gray-700 mb-2">Google Forms の質問を以下の通りに作成してください：</p>
+        <div class="overflow-x-auto">
+          <table class="text-sm">
+            <thead>
+              <tr>
+                <th>#</th><th>質問文（必ずこの文言を使用）</th><th>形式</th><th>必須</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><strong>お名前</strong></td><td>記述式（短文）</td><td>○</td></tr>
+              <tr><td>2</td><td><strong>会社名・屋号</strong></td><td>記述式（短文）</td><td>○</td></tr>
+              <tr><td>3</td><td><strong>業種</strong></td><td>プルダウン（20業種）</td><td>○</td></tr>
+              <tr><td>4</td><td><strong>役職</strong></td><td>記述式（短文）</td><td>○</td></tr>
+              <tr><td>5</td><td><strong>従業員数</strong></td><td>プルダウン</td><td>○</td></tr>
+              <tr><td>6</td><td><strong>参加目的</strong></td><td>チェックボックス（複数可）</td><td>○</td></tr>
+              <tr><td>7</td><td><strong>自社の強み・提供できること</strong></td><td>記述式（長文）</td><td>○</td></tr>
+              <tr><td>8</td><td><strong>現在の課題・求めているもの</strong></td><td>記述式（長文）</td><td>○</td></tr>
+              <tr><td>9</td><td><strong>特に話したい業種</strong></td><td>チェックボックス（任意）</td><td>-</td></tr>
+              <tr><td>10</td><td><strong>避けたい業種</strong></td><td>チェックボックス（任意）</td><td>-</td></tr>
+              <tr><td>11</td><td><strong>趣味</strong></td><td>チェックボックス（複数可）</td><td>○</td></tr>
+              <tr><td>12</td><td><strong>出身地</strong></td><td>プルダウン（都道府県）</td><td>○</td></tr>
+              <tr><td>13</td><td><strong>年齢</strong></td><td>プルダウン（20代〜60代以上）</td><td>-</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+          <p class="font-semibold mb-1">CSVのエクスポート手順</p>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>Googleフォームの「回答」タブ → スプレッドシートアイコンをクリック</li>
+            <li>Googleスプレッドシートが開いたら、メニューから「ファイル」→「ダウンロード」→「カンマ区切り（.csv）」</li>
+            <li>ダウンロードしたCSVをこの画面に取り込む</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">CSVファイルを取り込む</h2>
+      <p class="text-sm text-gray-500 mb-3">Google Forms からエクスポートしたCSV、または独自フォーマットのCSVに対応しています。</p>
+
+      <div class="drop-zone" id="dropZone">
+        <svg class="mx-auto mb-3 w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p class="text-gray-600 font-semibold">CSVファイルをドラッグ＆ドロップ</p>
+        <p class="text-gray-400 text-sm mt-1">または</p>
+        <label class="mt-2 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded cursor-pointer transition-colors">
+          ファイルを選択
+          <input type="file" accept=".csv" multiple class="hidden" id="fileInput">
+        </label>
+        <p class="text-gray-400 text-xs mt-3">Google Forms CSV・複数ファイル同時選択 対応</p>
+      </div>
+
+      <div id="importLog" class="mt-3 text-sm text-gray-500 hidden"></div>
+
+      <!-- 取込データ全消去ボタン -->
+      <div class="mt-4 flex items-center gap-3">
+        <button onclick="resetAllData()"
+          class="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
+          取込データを全消去してやり直す
+        </button>
+        <span class="text-gray-400 text-xs">※ 参加者・マッチング結果をすべてリセットします</span>
+      </div>
+    </div>
+
+    <!-- 手動追加 -->
+    <div class="bg-white rounded-xl p-6 shadow mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">参加者を手動で追加</h2>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="text-sm font-semibold text-gray-700">お名前 *</label>
+          <input id="m_name" type="text" class="w-full border rounded px-3 py-2 mt-1 text-sm" placeholder="山田 太郎">
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">会社名 *</label>
+          <input id="m_company" type="text" class="w-full border rounded px-3 py-2 mt-1 text-sm" placeholder="株式会社〇〇">
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">業種</label>
+          <select id="m_industry" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+            <option value="">-- 選択 --</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">役職</label>
+          <input id="m_position" type="text" class="w-full border rounded px-3 py-2 mt-1 text-sm" placeholder="代表取締役など">
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">従業員数</label>
+          <select id="m_size" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+            <option value="">-- 選択 --</option>
+            <option>1人（個人事業）</option><option>2〜10人</option>
+            <option>11〜50人</option><option>51人以上</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">参加目的</label>
+          <input id="m_purposes" type="text" class="w-full border rounded px-3 py-2 mt-1 text-sm"
+            placeholder="販路開拓|情報収集・学び（｜で区切り）">
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">趣味（複数選択可）</label>
+          <select id="m_hobbies" multiple size="5" class="w-full border rounded px-2 py-1 mt-1 text-sm">
+            <option>ゴルフ</option>
+            <option>ポーカー</option>
+            <option>麻雀</option>
+            <option>グルメ</option>
+            <option>お酒</option>
+            <option>旅行</option>
+            <option>サウナ</option>
+            <option>釣り</option>
+            <option>アウトドア</option>
+            <option>散歩</option>
+            <option>シーシャ</option>
+            <option>音楽</option>
+            <option>お笑い</option>
+            <option>格闘技</option>
+            <option>バスケ</option>
+            <option>その他</option>
+          </select>
+          <p class="text-gray-400 text-xs mt-1">Ctrl（Mac: ⌘）+クリックで複数選択</p>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-700">出身地</label>
+          <select id="m_birthplace" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+            <option value="">-- 選択 --</option>
+            <option>北海道</option><option>青森県</option><option>岩手県</option><option>宮城県</option>
+            <option>秋田県</option><option>山形県</option><option>福島県</option><option>茨城県</option>
+            <option>栃木県</option><option>群馬県</option><option>埼玉県</option><option>千葉県</option>
+            <option>東京都</option><option>神奈川県</option><option>新潟県</option><option>富山県</option>
+            <option>石川県</option><option>福井県</option><option>山梨県</option><option>長野県</option>
+            <option>岐阜県</option><option>静岡県</option><option>愛知県</option><option>三重県</option>
+            <option>滋賀県</option><option>京都府</option><option>大阪府</option><option>兵庫県</option>
+            <option>奈良県</option><option>和歌山県</option><option>鳥取県</option><option>島根県</option>
+            <option>岡山県</option><option>広島県</option><option>山口県</option><option>徳島県</option>
+            <option>香川県</option><option>愛媛県</option><option>高知県</option><option>福岡県</option>
+            <option>佐賀県</option><option>長崎県</option><option>熊本県</option><option>大分県</option>
+            <option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option><option>海外</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="addManual()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold text-sm">
+        + 追加
+      </button>
+      <p id="m_err" class="text-red-500 text-sm mt-1 hidden">名前と会社名は必須です</p>
+    </div>
+
+    <!-- 参加者一覧 -->
+    <div class="bg-white rounded-xl p-6 shadow">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">
+          参加者一覧
+          <span id="participantCount" class="ml-2 text-base font-normal text-gray-500">（0名）</span>
+        </h2>
+        <button onclick="clearAll()" class="text-red-500 hover:text-red-700 text-sm underline">全削除</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table id="participantTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th class="text-center">出欠</th>
+              <th>お名前</th>
+              <th>会社名</th>
+              <th>業種</th>
+              <th>規模</th>
+              <th>参加目的</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="participantTbody">
+            <tr><td colspan="8" class="text-center text-gray-400 py-4">参加者がいません</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-right">
+        <button onclick="switchTab('tab-matching')"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold">
+          マッチングへ進む →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== タブ2: マッチング実行 ===== -->
+  <div id="tab-matching" class="tab-content">
+
+    <div class="bg-white rounded-xl p-6 shadow mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-2">マッチング設定</h2>
+      <p class="text-gray-500 text-sm mb-4">
+        参加者 <strong id="mc_count">0</strong> 名で
+        <strong>5ラウンド</strong>の一対一面談スケジュールを生成します。
+      </p>
+
+      <div class="bg-blue-50 rounded-lg p-4 mb-4 text-sm text-blue-700">
+        <ul class="list-disc list-inside space-y-1">
+          <li>出席中の参加者のみでマッチングします（欠席者は自動除外）</li>
+          <li>同じペアの重複を最小限に抑えます</li>
+          <li>奇数人数の場合、1名が各ラウンドに1回「休憩」になります</li>
+        </ul>
+      </div>
+
+      <!-- 途中再マッチング設定 -->
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+        <h3 class="font-semibold text-amber-800 mb-2">途中からの再マッチング（当日の変更対応）</h3>
+        <p class="text-xs text-amber-700 mb-3">
+          欠席者が出たり、遅れて参加した場合はここで設定してから再実行してください。<br>
+          完了済みラウンドの組み合わせはそのまま保持され、残りのラウンドだけ再生成します。
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="text-sm font-semibold text-amber-800 whitespace-nowrap">完了済みラウンド数:</label>
+          <select id="completedRounds" class="border border-amber-300 rounded px-3 py-1 text-sm bg-white">
+            <option value="0">0（最初から全ラウンド生成）</option>
+            <option value="1">Round 1 まで完了 → Round 2〜5 を再生成</option>
+            <option value="2">Round 2 まで完了 → Round 3〜5 を再生成</option>
+            <option value="3">Round 3 まで完了 → Round 4〜5 を再生成</option>
+            <option value="4">Round 4 まで完了 → Round 5 を再生成</option>
+          </select>
+          <span id="lockedNote" class="text-xs text-amber-600 font-semibold"></span>
+        </div>
+      </div>
+
+      <button id="runMatchingBtn" onclick="runMatching()"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg text-lg">
+        マッチングを実行する
+      </button>
+      <p class="text-xs text-gray-400 mt-2">
+        出席者: <strong id="mc_active">0</strong>名 ／ 欠席: <strong id="mc_absent">0</strong>名
+      </p>
+      <svg class="spinner show spin w-6 h-6 inline-block ml-3 text-indigo-500 hidden" id="spinner"
+        fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      <p id="matchingErr" class="text-red-500 text-sm mt-2 hidden"></p>
+    </div>
+
+    <!-- マッチング結果プレビュー -->
+    <div id="matchingPreview" class="hidden">
+      <div class="bg-white rounded-xl p-6 shadow mb-4">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">マッチング結果プレビュー</h2>
+        <div id="roundPreviews"></div>
+      </div>
+      <div class="text-right">
+        <button onclick="switchTab('tab-export')"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold">
+          エクスポートへ進む →
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== タブ3: エクスポート ===== -->
+  <div id="tab-export" class="tab-content">
+
+    <div class="bg-white rounded-xl p-6 shadow mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">結果をエクスポートする</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div class="border rounded-xl p-5 text-center hover:shadow-md transition-shadow">
+          <div class="text-4xl mb-3">📋</div>
+          <h3 class="font-bold text-gray-800 mb-2">全体スケジュール CSV</h3>
+          <p class="text-gray-500 text-sm mb-4">全ラウンドの全ペアを一覧でCSVに出力</p>
+          <button onclick="exportGlobalCSV()"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold w-full">
+            ダウンロード
+          </button>
+        </div>
+
+        <div class="border rounded-xl p-5 text-center hover:shadow-md transition-shadow">
+          <div class="text-4xl mb-3">👤</div>
+          <h3 class="font-bold text-gray-800 mb-2">個人別スケジュール CSV</h3>
+          <p class="text-gray-500 text-sm mb-4">参加者全員の個人スケジュールを1ファイルで出力</p>
+          <button onclick="exportPersonalCSV()"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold w-full">
+            ダウンロード
+          </button>
+        </div>
+
+        <div class="border rounded-xl p-5 text-center hover:shadow-md transition-shadow">
+          <div class="text-4xl mb-3">🖥️</div>
+          <h3 class="font-bold text-gray-800 mb-2">結果表示画面を開く</h3>
+          <p class="text-gray-500 text-sm mb-4">印刷対応の結果画面をブラウザで表示</p>
+          <button onclick="openResultPage()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold w-full">
+            開く
+          </button>
+        </div>
+
+      </div>
+
+      <p id="exportErr" class="text-red-500 text-sm mt-4 hidden">先にマッチングを実行してください</p>
+    </div>
+
+  </div>
+
+</div><!-- /max-w -->
+
+<script src="js/scoring.js"></script>
+<script src="js/matching.js"></script>
+<script>
+  const INDUSTRIES = [
+    'IT/情報通信関係', 'コンサル関係', 'デザイン関係',
+    '不動産/住宅/建設関係', '人材（派遣/紹介）関係',
+    '医療/介護/福祉/健康/スポーツ関係', '士業（税理士/会計士/弁護士など）',
+    '広告関係', '店舗（飲食/美容/物販）関係', '教育関係',
+    '旅行/観光関係', '流通/卸売/小売関係', '物流/運輸/郵便業',
+    '生活品関係/食品（食材）', '美容/ファッション関係', '製造業関係',
+    '農業/林業/漁業/鉱業関係', '金融/保険業', '電気/ガス/熱供給/水道業', 'その他',
+  ];
+
+  // 手動追加の業種セレクトを動的生成
+  const mIndustrySelect = document.getElementById('m_industry');
+  INDUSTRIES.forEach(ind => {
+    const opt = document.createElement('option');
+    opt.value = ind;
+    opt.textContent = ind;
+    mIndustrySelect.appendChild(opt);
+  });
+
+  // ===== State =====
+  let participants = [];
+  let matchingResult = null;
+  let personalSchedule = null;
+
+  // ===== Tab =====
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active', 'text-white');
+      btn.classList.add('text-gray-600', 'border-gray-300');
+    });
+    document.getElementById(id).classList.add('active');
+    const btn = document.querySelector(`[data-tab="${id}"]`);
+    btn.classList.add('active');
+    btn.classList.remove('text-gray-600');
+    if (id === 'tab-matching') updateMatchingCount();
+  }
+
+  // ===== CSV取込 =====
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    processFiles([...e.dataTransfer.files]);
+  });
+  fileInput.addEventListener('change', () => processFiles([...fileInput.files]));
+
+  function processFiles(files) {
+    const csvFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
+    if (csvFiles.length === 0) { alert('CSVファイルを選択してください'); return; }
+
+    let processed = 0;
+    const log = [];
+
+    csvFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const text = e.target.result;
+          const { headers, rows } = parseCSV(text);
+          const added = importParticipants(rows, headers);
+          log.push(`✅ ${file.name}: ${added}名追加`);
+        } catch (err) {
+          log.push(`❌ ${file.name}: 読み込みエラー (${err.message})`);
+        }
+        processed++;
+        if (processed === csvFiles.length) {
+          const logEl = document.getElementById('importLog');
+          logEl.innerHTML = log.map(l => `<p>${l}</p>`).join('');
+          logEl.classList.remove('hidden');
+          renderParticipants();
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
+  function parseCSV(text) {
+    const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    const lines = clean.split('\n').filter(l => l.trim());
+    if (lines.length < 2) throw new Error('データが空です');
+
+    const headers = splitCSVRow(lines[0]).map(h => h.trim());
+    const rows = lines.slice(1).map(line => {
+      const values = splitCSVRow(line);
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (values[i] || '').trim(); });
+      return obj;
+    });
+    return { headers, rows };
+  }
+
+  function splitCSVRow(row) {
+    const result = [];
+    let current = '';
+    let inQuote = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') {
+        if (inQuote && row[i+1] === '"') { current += '"'; i++; }
+        else { inQuote = !inQuote; }
+      } else if (c === ',' && !inQuote) {
+        result.push(current); current = '';
+      } else {
+        current += c;
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
+  function findCol(row, headers, keywords) {
+    const key = headers.find(h => keywords.some(kw => h.includes(kw)));
+    return key ? (row[key] || '') : '';
+  }
+
+  // Google Forms（", "区切り）・独自形式（"|"区切り）両対応
+  function splitMulti(val) {
+    if (!val) return [];
+    if (val.includes('|')) return val.split('|').map(s => s.trim()).filter(Boolean);
+    return val.split(/,\s+|、/).map(s => s.trim()).filter(Boolean);
+  }
+
+  function importParticipants(rows, headers) {
+    let added = 0;
+    rows.forEach(row => {
+      const name    = findCol(row, headers, ['お名前', '名前', '氏名', 'name']);
+      const company = findCol(row, headers, ['会社名', '会社', '屋号', '企業名', 'company']);
+      if (!name || !company) return;
+
+      if (participants.find(p => p.name === name && p.company === company)) return;
+
+      const timestamp = findCol(row, headers, ['タイムスタンプ', 'Timestamp']);
+      const id = row['ID'] || (timestamp
+        ? timestamp.replace(/\D/g, '').slice(0, 12) + Math.random().toString(36).slice(2, 4)
+        : Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
+
+      participants.push({
+        id,
+        name,
+        company,
+        industry:         findCol(row, headers, ['業種']),
+        position:         findCol(row, headers, ['役職', 'position']),
+        companySize:      findCol(row, headers, ['従業員', '人数', '規模', 'companySize']),
+        purposes:         splitMulti(findCol(row, headers, ['参加目的', '目的', 'purpose'])),
+        strengths:        findCol(row, headers, ['強み', '提供できる', 'strengths']),
+        challenges:       findCol(row, headers, ['課題', '求めて', 'challenges']),
+        preferIndustries: splitMulti(findCol(row, headers, ['話したい', '希望業種', 'prefer'])),
+        avoidIndustries:  splitMulti(findCol(row, headers, ['避けたい', '競合', 'avoid'])),
+        hobbies:          splitMulti(findCol(row, headers, ['趣味', 'hobby'])),
+        birthplace:       findCol(row, headers, ['出身地', '出身', 'birthplace']),
+        ageRange:         findCol(row, headers, ['年齢', 'age']),
+        status: 'present',
+      });
+      added++;
+    });
+    return added;
+  }
+
+  // ===== 手動追加 =====
+  function addManual() {
+    const name = document.getElementById('m_name').value.trim();
+    const company = document.getElementById('m_company').value.trim();
+    const errEl = document.getElementById('m_err');
+
+    if (!name || !company) { errEl.classList.remove('hidden'); return; }
+    errEl.classList.add('hidden');
+
+    participants.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      name,
+      company,
+      industry:  document.getElementById('m_industry').value,
+      position:  document.getElementById('m_position').value.trim(),
+      companySize: document.getElementById('m_size').value,
+      purposes:  document.getElementById('m_purposes').value.split('|').map(s => s.trim()).filter(Boolean),
+      strengths: '',
+      challenges: '',
+      preferIndustries: [],
+      avoidIndustries: [],
+      hobbies: [...document.getElementById('m_hobbies').selectedOptions].map(o => o.value),
+      birthplace: document.getElementById('m_birthplace').value,
+      ageRange: '',
+      status: 'present',
+    });
+
+    ['m_name','m_company','m_industry','m_position','m_size','m_purposes','m_birthplace'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    [...document.getElementById('m_hobbies').options].forEach(o => o.selected = false);
+    renderParticipants();
+  }
+
+  function resetAllData() {
+    if (!confirm('取込済みの参加者データとマッチング結果をすべて消去します。\nよろしいですか？')) return;
+    participants = [];
+    matchingResult = null;
+    personalSchedule = null;
+    document.getElementById('completedRounds').value = '0';
+    document.getElementById('importLog').classList.add('hidden');
+    document.getElementById('importLog').innerHTML = '';
+    document.getElementById('matchingPreview').classList.add('hidden');
+    renderParticipants();
+    updateMatchingCount();
+  }
+
+  function clearAll() {
+    if (!confirm('参加者を全員削除しますか？')) return;
+    participants = [];
+    matchingResult = null;
+    personalSchedule = null;
+    renderParticipants();
+  }
+
+  function removeParticipant(idx) {
+    if (!confirm(`「${participants[idx].name}」を削除しますか？`)) return;
+    participants.splice(idx, 1);
+    renderParticipants();
+  }
+
+  function toggleStatus(idx) {
+    participants[idx].status = participants[idx].status === 'absent' ? 'present' : 'absent';
+    renderParticipants();
+    updateMatchingCount();
+  }
+
+  function renderParticipants() {
+    const tbody = document.getElementById('participantTbody');
+    const total = participants.length;
+    const absent = participants.filter(p => p.status === 'absent').length;
+    document.getElementById('participantCount').textContent =
+      `（${total}名 / 出席${total - absent}名・欠席${absent}名）`;
+
+    if (total === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-4">参加者がいません</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = participants.map((p, i) => {
+      const isAbsent = p.status === 'absent';
+      return `
+        <tr class="${isAbsent ? 'bg-gray-50 opacity-60' : ''}">
+          <td class="text-gray-400">${i + 1}</td>
+          <td class="text-center">
+            <button onclick="toggleStatus(${i})"
+              class="px-2 py-0.5 rounded-full text-xs font-bold border transition-colors
+                ${isAbsent
+                  ? 'bg-gray-200 text-gray-500 border-gray-300 hover:bg-green-100 hover:text-green-700'
+                  : 'bg-green-100 text-green-700 border-green-300 hover:bg-red-100 hover:text-red-600'}">
+              ${isAbsent ? '欠席' : '出席'}
+            </button>
+          </td>
+          <td class="font-medium ${isAbsent ? 'line-through text-gray-400' : ''}">${esc(p.name)}</td>
+          <td class="${isAbsent ? 'text-gray-400' : ''}">${esc(p.company)}</td>
+          <td>${esc(p.industry)}</td>
+          <td>${esc(p.companySize)}</td>
+          <td><span class="text-xs text-gray-500">${p.purposes.join('、')}</span></td>
+          <td class="whitespace-nowrap">
+            <button onclick="toggleStatus(${i})"
+              class="text-xs mr-2 ${isAbsent ? 'text-green-600 hover:text-green-800' : 'text-orange-500 hover:text-orange-700'}">
+              ${isAbsent ? '出席に戻す' : '欠席にする'}
+            </button>
+            <button onclick="removeParticipant(${i})" class="text-red-400 hover:text-red-600 text-xs">削除</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ===== マッチング実行 =====
+  function updateMatchingCount() {
+    const active = participants.filter(p => p.status !== 'absent').length;
+    const absent = participants.length - active;
+    document.getElementById('mc_count').textContent = participants.length;
+    document.getElementById('mc_active').textContent = active;
+    document.getElementById('mc_absent').textContent = absent;
+
+    const completed = parseInt(document.getElementById('completedRounds')?.value || '0');
+    const noteEl = document.getElementById('lockedNote');
+    if (noteEl) {
+      noteEl.textContent = completed > 0
+        ? `（Round ${completed + 1}〜5 を${active}名で再生成）`
+        : `（${active}名で全5ラウンドを生成）`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('completedRounds')?.addEventListener('change', updateMatchingCount);
+  });
+
+  function runMatching() {
+    const errEl = document.getElementById('matchingErr');
+    errEl.classList.add('hidden');
+
+    const activeParticipants = participants.filter(p => p.status !== 'absent');
+    if (activeParticipants.length < 2) {
+      errEl.textContent = '出席中の参加者が2名以上必要です';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const completedCount = parseInt(document.getElementById('completedRounds').value) || 0;
+
+    let lockedRoundsData = [];
+    if (completedCount > 0) {
+      if (!matchingResult || matchingResult.rounds.length < completedCount) {
+        errEl.textContent = '先にマッチングを1回実行してから完了ラウンド数を設定してください';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      lockedRoundsData = matchingResult.rounds.slice(0, completedCount);
+    }
+
+    const initialUsedPairs = new Set();
+    for (const round of lockedRoundsData) {
+      for (const pair of round) {
+        const aId = pair.a?.id || pair.aId;
+        const bId = pair.b?.id || pair.bId;
+        if (aId && bId && !pair.a?.isDummy && !pair.b?.isDummy) {
+          const sorted = [aId, bId].sort();
+          initialUsedPairs.add(`${sorted[0]}---${sorted[1]}`);
+        }
+      }
+    }
+
+    document.getElementById('spinner').classList.remove('hidden');
+    document.getElementById('runMatchingBtn').disabled = true;
+
+    setTimeout(() => {
+      try {
+        const roundsToGenerate = 5 - completedCount;
+        const scoreMatrix = window.Scoring.buildScoreMatrix(activeParticipants);
+        const newResult = window.Matching.generateMatching(activeParticipants, scoreMatrix, {
+          roundsToGenerate,
+          initialUsedPairs,
+        });
+
+        matchingResult = {
+          rounds: [...lockedRoundsData, ...newResult.rounds],
+          hasBye: newResult.hasBye,
+          lockedCount: completedCount,
+        };
+        personalSchedule = window.Matching.buildPersonalSchedule(matchingResult.rounds, participants);
+
+        renderMatchingPreview();
+        document.getElementById('matchingPreview').classList.remove('hidden');
+      } catch(e) {
+        errEl.textContent = 'エラーが発生しました: ' + e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        document.getElementById('spinner').classList.add('hidden');
+        document.getElementById('runMatchingBtn').disabled = false;
+      }
+    }, 50);
+  }
+
+  function renderMatchingPreview() {
+    const container = document.getElementById('roundPreviews');
+    const { rounds, lockedCount = 0 } = matchingResult;
+
+    container.innerHTML = rounds.map((pairs, idx) => {
+      const isLocked = idx < lockedCount;
+      return `
+      <div class="mb-6 ${isLocked ? 'opacity-60' : ''}">
+        <h3 class="font-bold text-gray-700 mb-2 text-base border-b pb-1 flex items-center gap-2">
+          Round ${idx + 1}
+          ${isLocked
+            ? '<span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-normal">完了・固定</span>'
+            : '<span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-normal">新規生成</span>'
+          }
+        </h3>
+        <table>
+          <thead>
+            <tr>
+              <th>参加者A</th><th>会社A</th>
+              <th class="text-center">vs</th>
+              <th>参加者B</th><th>会社B</th>
+              <th class="text-center">相性スコア</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pairs.map(pair => {
+              const isDummy = pair.a.isDummy || pair.b.isDummy;
+              const scoreClass = pair.score >= 60 ? 'score-high' : pair.score >= 30 ? 'score-mid' : 'score-low';
+              return `
+                <tr ${isDummy ? 'class="text-gray-400 italic"' : ''}>
+                  <td>${esc(pair.a.isDummy ? '（休憩）' : pair.a.name)}</td>
+                  <td>${esc(pair.a.isDummy ? '' : pair.a.company)}</td>
+                  <td class="text-center text-gray-400">↔</td>
+                  <td>${esc(pair.b.isDummy ? '（休憩）' : pair.b.name)}</td>
+                  <td>${esc(pair.b.isDummy ? '' : pair.b.company)}</td>
+                  <td class="text-center">
+                    ${isDummy ? '-' : `<span class="badge ${scoreClass}">${pair.score}点</span>`}
+                    ${pair.isRepeat ? '<span class="badge score-low ml-1">再マッチ</span>' : ''}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      `;
+    }).join('');
+  }
+
+  // ===== エクスポート =====
+  function checkMatching() {
+    if (!matchingResult) {
+      document.getElementById('exportErr').classList.remove('hidden');
+      return false;
+    }
+    document.getElementById('exportErr').classList.add('hidden');
+    return true;
+  }
+
+  function exportGlobalCSV() {
+    if (!checkMatching()) return;
+    const csv = window.Matching.exportMatchingCSV(matchingResult.rounds);
+    downloadBlob(csv, '全体スケジュール.csv');
+  }
+
+  function exportPersonalCSV() {
+    if (!checkMatching()) return;
+    const csv = window.Matching.exportPersonalCSV(personalSchedule, participants);
+    downloadBlob(csv, '個人別スケジュール.csv');
+  }
+
+  function openResultPage() {
+    if (!checkMatching()) return;
+    const data = {
+      participants,
+      lockedCount: matchingResult.lockedCount || 0,
+      rounds: matchingResult.rounds.map(pairs => pairs.map(p => ({
+        aId: p.a.id, aName: p.a.name, aCompany: p.a.company, aIsDummy: !!p.a.isDummy,
+        bId: p.b.id, bName: p.b.name, bCompany: p.b.company, bIsDummy: !!p.b.isDummy,
+        score: p.score, isRepeat: !!p.isRepeat,
+      }))),
+      generatedAt: new Date().toLocaleString('ja-JP'),
+    };
+    try {
+      localStorage.setItem('matching_result', JSON.stringify(data));
+      window.open('03_result.html', '_blank');
+    } catch(e) {
+      alert('データが大きすぎてLocalStorageに保存できません。CSVでエクスポートしてください。');
+    }
+  }
+
+  function downloadBlob(text, filename) {
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function toggleGuide() {
+    const body = document.getElementById('guideBody');
+    const chevron = document.getElementById('guideChevron');
+    const isHidden = body.classList.toggle('hidden');
+    chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
+  }
+
+  // 初期レンダリング
+  renderParticipants();
+</script>
+</body>
+</html>
