@@ -233,6 +233,7 @@ function exportPersonalCSV(personalSchedule, participants) {
 // グローバルまたはモジュールとして公開
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { generateMatching, buildPersonalSchedule, exportMatchingCSV, exportPersonalCSV, ROUNDS };
-} else {
+}
+if (typeof window !== 'undefined') {
   window.Matching = { generateMatching, buildPersonalSchedule, exportMatchingCSV, exportPersonalCSV, ROUNDS };
 }

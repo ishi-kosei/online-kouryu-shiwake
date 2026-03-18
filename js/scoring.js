@@ -151,6 +151,7 @@ function buildScoreMatrix(participants) {
 // グローバルまたはモジュールとして公開
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { calcScore, buildScoreMatrix, INDUSTRY_COMPLEMENT };
-} else {
+}
+if (typeof window !== 'undefined') {
   window.Scoring = { calcScore, buildScoreMatrix, INDUSTRY_COMPLEMENT };
 }
