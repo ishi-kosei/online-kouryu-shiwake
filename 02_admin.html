@@ -234,7 +234,7 @@
 
     <!-- 参加者一覧 -->
     <div class="bg-white rounded-xl p-6 shadow">
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center mb-3">
         <h2 class="text-xl font-bold text-gray-800">
           参加者一覧
           <span id="participantCount" class="ml-2 text-base font-normal text-gray-500">（0名）</span>
@@ -242,18 +242,24 @@
         <button onclick="clearAll()" class="text-red-500 hover:text-red-700 text-sm underline">全削除</button>
       </div>
 
+      <div class="mb-3">
+        <input id="participantSearch" type="text" placeholder="名前・会社名・業種で検索..."
+          oninput="renderParticipants()"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+
       <div class="overflow-x-auto">
         <table id="participantTable">
           <thead>
             <tr>
-              <th>#</th>
-              <th class="text-center">出欠</th>
-              <th>お名前</th>
+              <th style="width:2.5rem">#</th>
+              <th style="width:4rem" class="text-center">出欠</th>
+              <th style="min-width:8rem">お名前</th>
               <th>会社名</th>
-              <th>業種</th>
-              <th>規模</th>
+              <th style="width:6rem">業種</th>
+              <th style="width:6rem">規模</th>
               <th>参加目的</th>
-              <th>操作</th>
+              <th style="width:7rem">操作</th>
             </tr>
           </thead>
           <tbody id="participantTbody">
@@ -636,7 +642,18 @@
       return;
     }
 
-    tbody.innerHTML = participants.map((p, i) => {
+    const keyword = (document.getElementById('participantSearch')?.value || '').trim().toLowerCase();
+    const filtered = participants.map((p, i) => ({ p, i })).filter(({ p }) => {
+      if (!keyword) return true;
+      return [p.name, p.company, p.industry].some(v => (v || '').toLowerCase().includes(keyword));
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-4">該当する参加者がいません</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(({ p, i }) => {
       const isAbsent = p.status === 'absent';
       return `
         <tr class="${isAbsent ? 'bg-gray-50 opacity-60' : ''}">
