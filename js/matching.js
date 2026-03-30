@@ -185,7 +185,7 @@ function exportMatchingCSV(rounds) {
 
   rounds.forEach((pairs, idx) => {
     for (const { a, b, score, isRepeat, isBye } of pairs) {
-      const note = isBye ? '休憩' : isRepeat ? '再マッチ' : '';
+      const note = isBye ? '休憩' : '';
       rows.push([
         `Round ${idx + 1}`,
         a.isDummy ? '（休憩）' : a.name,
