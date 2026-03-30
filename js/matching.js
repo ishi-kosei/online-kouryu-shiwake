@@ -81,54 +81,80 @@ function generateMatching(participants, scoreMatrix, options = {}) {
     const candidates = [];
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        const key = `${i}-${j}`;
-        if (!usedPairs.has(key)) {
+        if (!usedPairs.has(`${i}-${j}`)) {
           candidates.push({ i, j, score: matrix[i][j] });
         }
       }
     }
     candidates.sort((a, b) => b.score - a.score);
 
-    // 貪欲にペアを確定
-    const matched = new Set(); // このラウンドで確定済みの参加者インデックス
-    const roundPairs = [];
+    // 貪欲にペアを確定（インデックスも保持）
+    const matched = new Set();
+    const roundPairs = []; // { a, b, score, _i, _j }
 
     for (const { i, j, score } of candidates) {
       if (!matched.has(i) && !matched.has(j)) {
         matched.add(i);
         matched.add(j);
         usedPairs.add(`${i}-${j}`);
-        roundPairs.push({
-          a: list[i],
-          b: list[j],
-          score: Math.max(0, score),
-        });
+        roundPairs.push({ a: list[i], b: list[j], score: Math.max(0, score), _i: i, _j: j });
       }
     }
 
-    // 未マッチの参加者を確認（制約緩和: 既会済みでも再マッチ）
+    // 未マッチの参加者を収集
     const unmatched = [];
     for (let i = 0; i < n; i++) {
       if (!matched.has(i)) unmatched.push(i);
     }
 
+    // 拡張パスで同一ペア回避を試みる
+    // 未マッチの u に対し、既確定ペア(x,y) の片方と交換できないか探索
     if (unmatched.length >= 2) {
-      // 制約緩和: 既会済みペアも許可（繰り返しは最小化）
-      for (let k = 0; k < unmatched.length - 1; k += 2) {
-        const i = unmatched[k];
-        const j = unmatched[k + 1];
-        roundPairs.push({
-          a: list[i],
-          b: list[j],
-          score: Math.max(0, matrix[i][j]),
-          isRepeat: true,
-        });
-        matched.add(i);
-        matched.add(j);
+      let improved = true;
+      while (improved && unmatched.length >= 2) {
+        improved = false;
+        outer: for (let ui = 0; ui < unmatched.length; ui++) {
+          const u = unmatched[ui];
+          for (let pi = 0; pi < roundPairs.length; pi++) {
+            const { _i: x, _j: y } = roundPairs[pi];
+            for (const [swap1, swap2] of [[u, x, y], [u, y, x]].map(([a, b, c]) => [a, b, c])) {
+              const newKey1 = `${Math.min(swap1, swap2)}-${Math.max(swap1, swap2)}`;
+              if (usedPairs.has(newKey1)) continue;
+              // swap1(=u) と swap2(=x or y) を新ペアに。swap2 の元パートナー swap3 を未マッチへ
+              const swap3 = swap2 === x ? y : x;
+              // swap3 と組める未マッチ v を探す
+              for (let vi = 0; vi < unmatched.length; vi++) {
+                if (vi === ui) continue;
+                const v = unmatched[vi];
+                const newKey2 = `${Math.min(swap3, v)}-${Math.max(swap3, v)}`;
+                if (usedPairs.has(newKey2)) continue;
+                // 拡張パス確定: 既存ペアを解除して新ペア2組を追加
+                usedPairs.delete(`${Math.min(x, y)}-${Math.max(x, y)}`);
+                roundPairs.splice(pi, 1);
+                usedPairs.add(newKey1);
+                usedPairs.add(newKey2);
+                roundPairs.push({ a: list[swap1], b: list[swap2], score: Math.max(0, matrix[swap1][swap2]), _i: Math.min(swap1,swap2), _j: Math.max(swap1,swap2) });
+                roundPairs.push({ a: list[swap3], b: list[v],     score: Math.max(0, matrix[swap3][v]),     _i: Math.min(swap3,v),    _j: Math.max(swap3,v)    });
+                const hi = Math.max(ui, vi), lo = Math.min(ui, vi);
+                unmatched.splice(hi, 1);
+                unmatched.splice(lo, 1);
+                improved = true;
+                break outer;
+              }
+            }
+          }
+        }
       }
     }
 
-    roundResults[roundSlots[round]] = roundPairs;
+    // それでも未マッチが残る場合のみやむを得ずペアリング（人数が少なすぎる場合）
+    for (let k = 0; k < unmatched.length - 1; k += 2) {
+      const i = unmatched[k], j = unmatched[k + 1];
+      roundPairs.push({ a: list[i], b: list[j], score: Math.max(0, matrix[i][j]) });
+    }
+
+    // 内部インデックスを除去して結果に格納
+    roundResults[roundSlots[round]] = roundPairs.map(({ a, b, score }) => ({ a, b, score }));
   }
 
   return { rounds: roundResults, hasBye };
