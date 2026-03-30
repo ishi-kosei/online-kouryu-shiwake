@@ -295,27 +295,8 @@
         </ul>
       </div>
 
-      <!-- 途中再マッチング設定 -->
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-        <h3 class="font-semibold text-amber-800 mb-2">途中からの再マッチング（当日の変更対応）</h3>
-        <p class="text-xs text-amber-700 mb-3">
-          欠席者が出たり、遅れて参加した場合はここで設定してから再実行してください。<br>
-          完了済みラウンドの組み合わせはそのまま保持され、残りのラウンドだけ再生成します。
-        </p>
-        <div class="flex flex-wrap items-center gap-3">
-          <label class="text-sm font-semibold text-amber-800 whitespace-nowrap">完了済みラウンド数:</label>
-          <select id="completedRounds" class="border border-amber-300 rounded px-3 py-1 text-sm bg-white">
-            <option value="0">0（最初から全ラウンド生成）</option>
-            <option value="1">Round 1 まで完了 → Round 2〜5 を再生成</option>
-            <option value="2">Round 2 まで完了 → Round 3〜5 を再生成</option>
-            <option value="3">Round 3 まで完了 → Round 4〜5 を再生成</option>
-            <option value="4">Round 4 まで完了 → Round 5 を再生成</option>
-          </select>
-          <span id="lockedNote" class="text-xs text-amber-600 font-semibold"></span>
-        </div>
-      </div>
 
-      <button id="runMatchingBtn" onclick="runMatching()"
+<button id="runMatchingBtn" onclick="runMatching()"
         class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg text-lg">
         マッチングを実行する
       </button>
@@ -602,7 +583,6 @@
     participants = [];
     matchingResult = null;
     personalSchedule = null;
-    document.getElementById('completedRounds').value = '0';
     document.getElementById('importLog').classList.add('hidden');
     document.getElementById('importLog').innerHTML = '';
     document.getElementById('matchingPreview').classList.add('hidden');
@@ -696,18 +676,7 @@
     document.getElementById('mc_active').textContent = active;
     document.getElementById('mc_absent').textContent = absent;
 
-    const completed = parseInt(document.getElementById('completedRounds')?.value || '0');
-    const noteEl = document.getElementById('lockedNote');
-    if (noteEl) {
-      noteEl.textContent = completed > 0
-        ? `（Round ${completed + 1}〜5 を${active}名で再生成）`
-        : `（${active}名で全5ラウンドを生成）`;
-    }
   }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('completedRounds')?.addEventListener('change', updateMatchingCount);
-  });
 
   function runMatching() {
     const errEl = document.getElementById('matchingErr');
@@ -720,46 +689,22 @@
       return;
     }
 
-    const completedCount = parseInt(document.getElementById('completedRounds').value) || 0;
-
-    let lockedRoundsData = [];
-    if (completedCount > 0) {
-      if (!matchingResult || matchingResult.rounds.length < completedCount) {
-        errEl.textContent = '先にマッチングを1回実行してから完了ラウンド数を設定してください';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      lockedRoundsData = matchingResult.rounds.slice(0, completedCount);
-    }
-
     const initialUsedPairs = new Set();
-    for (const round of lockedRoundsData) {
-      for (const pair of round) {
-        const aId = pair.a?.id || pair.aId;
-        const bId = pair.b?.id || pair.bId;
-        if (aId && bId && !pair.a?.isDummy && !pair.b?.isDummy) {
-          const sorted = [aId, bId].sort();
-          initialUsedPairs.add(`${sorted[0]}---${sorted[1]}`);
-        }
-      }
-    }
 
     document.getElementById('spinner').classList.remove('hidden');
     document.getElementById('runMatchingBtn').disabled = true;
 
     setTimeout(() => {
       try {
-        const roundsToGenerate = 5 - completedCount;
         const scoreMatrix = window.Scoring.buildScoreMatrix(activeParticipants);
         const newResult = window.Matching.generateMatching(activeParticipants, scoreMatrix, {
-          roundsToGenerate,
+          roundsToGenerate: 5,
           initialUsedPairs,
         });
 
         matchingResult = {
-          rounds: [...lockedRoundsData, ...newResult.rounds],
+          rounds: newResult.rounds,
           hasBye: newResult.hasBye,
-          lockedCount: completedCount,
         };
         personalSchedule = window.Matching.buildPersonalSchedule(matchingResult.rounds, participants);
 
@@ -777,18 +722,13 @@
 
   function renderMatchingPreview() {
     const container = document.getElementById('roundPreviews');
-    const { rounds, lockedCount = 0 } = matchingResult;
+    const { rounds } = matchingResult;
 
     container.innerHTML = rounds.map((pairs, idx) => {
-      const isLocked = idx < lockedCount;
       return `
-      <div class="mb-6 ${isLocked ? 'opacity-60' : ''}">
-        <h3 class="font-bold text-gray-700 mb-2 text-base border-b pb-1 flex items-center gap-2">
+      <div class="mb-6">
+        <h3 class="font-bold text-gray-700 mb-2 text-base border-b pb-1">
           Round ${idx + 1}
-          ${isLocked
-            ? '<span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-normal">完了・固定</span>'
-            : '<span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-normal">新規生成</span>'
-          }
         </h3>
         <table>
           <thead>
@@ -850,7 +790,6 @@
     if (!checkMatching()) return;
     const data = {
       participants,
-      lockedCount: matchingResult.lockedCount || 0,
       rounds: matchingResult.rounds.map(pairs => pairs.map(p => ({
         aId: p.a.id, aName: p.a.name, aCompany: p.a.company, aIsDummy: !!p.a.isDummy,
         bId: p.b.id, bName: p.b.name, bCompany: p.b.company, bIsDummy: !!p.b.isDummy,
